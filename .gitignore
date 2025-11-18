@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+/.pytest_cache/
+/projects/
+/.venv-build/
+
+# Binary artifacts
+*.ico
+*.exe
+*.dll
+*.msi
+
+# Build outputs
+/build/
+/dist/
+/installer/
+
+# Generated packaging files
+/packaging/*.generated.iss
