@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Sequence
 
+from ..core.deployment_manager import resolve_wordpress_connection
 from ..core.models import AffiliateOffer, ProjectData
 from ..core.task_state import TaskStateTracker
 from ..core.wp_client import WordPressRestClient
@@ -59,11 +60,11 @@ class AffiliateLinkEngine:
         self.logger = logger or self._configure_logger()
         self.task_state = TaskStateTracker(project_root, "affiliate")
         if client is None:
-            info = project_data.basic_info
+            site_url, username, password = resolve_wordpress_connection(project_data)
             client = WordPressRestClient(
-                info.wp_admin_url,
-                info.wp_username,
-                info.wp_password,
+                site_url,
+                username,
+                password,
                 logger=self.logger,
             )
         self.client = client

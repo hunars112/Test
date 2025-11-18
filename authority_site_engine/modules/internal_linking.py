@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+from ..core.deployment_manager import resolve_wordpress_connection
 from ..core.extensions import get_extension_manager
 from ..core.models import ProjectData
 from ..core.task_state import TaskStateTracker
@@ -76,8 +77,8 @@ class InternalLinkingEngine:
         self.content_dir.mkdir(parents=True, exist_ok=True)
         self.logger = logger or self._configure_logger()
         if client is None:
-            info = project_data.basic_info
-            client = WordPressRestClient(info.wp_admin_url, info.wp_username, info.wp_password, logger=self.logger)
+            site_url, username, password = resolve_wordpress_connection(project_data)
+            client = WordPressRestClient(site_url, username, password, logger=self.logger)
         self.client = client
         self.rules = project_data.linking_rules
         self.task_state = TaskStateTracker(project_root, "internal_linking")

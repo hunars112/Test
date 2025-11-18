@@ -2,6 +2,7 @@
 
 from .core import (
     AppConfig,
+    DeploymentManager,
     ProjectData,
     ProjectManager,
     WordPressRestClient,
@@ -33,6 +34,7 @@ __all__ = [
     "TopicalBlueprintGenerator",
     "WordPressPostingEngine",
     "WordPressRestClient",
+    "DeploymentManager",
     "InternalLinkingEngine",
     "CategoryMenuBuilder",
     "AffiliateLinkEngine",

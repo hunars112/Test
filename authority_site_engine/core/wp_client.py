@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import requests
 
@@ -44,11 +44,31 @@ class WordPressRestClient:
             return None
         return response.json()
 
+    def test_connection(self) -> Dict[str, object]:
+        """Call the WordPress REST index to ensure credentials work."""
+
+        url = f"{self.base_url}/wp-json/"
+        response = self.http_client.request("GET", url)
+        if not response.ok:
+            self.logger.error("WordPress index request failed: %s", response.text)
+            response.raise_for_status()
+        return response.json()
+
     def list_categories(self) -> List[Dict[str, object]]:
         return self._request("GET", "/categories")
 
-    def create_category(self, name: str) -> Dict[str, object]:
-        return self._request("POST", "/categories", json={"name": name})
+    def create_category(self, name: str, slug: str | None = None) -> Dict[str, object]:
+        payload: Dict[str, object] = {"name": name}
+        if slug:
+            payload["slug"] = slug
+        return self._request("POST", "/categories", json=payload)
+
+    def ensure_category(self, name: str, slug: str | None = None) -> Tuple[int, bool]:
+        term = self._find_term("/categories", name)
+        if term:
+            return int(term["id"]), False
+        created = self.create_category(name, slug=slug)
+        return int(created["id"]), True
 
     def list_tags(self) -> List[Dict[str, object]]:
         return self._request("GET", "/tags")
@@ -56,11 +76,24 @@ class WordPressRestClient:
     def create_tag(self, name: str) -> Dict[str, object]:
         return self._request("POST", "/tags", json={"name": name})
 
+    def ensure_tag(self, name: str) -> Tuple[int, bool]:
+        term = self._find_term("/tags", name)
+        if term:
+            return int(term["id"]), False
+        created = self.create_tag(name)
+        return int(created["id"]), True
+
     def create_post(self, payload: Dict[str, object]) -> Dict[str, object]:
         return self._request("POST", "/posts", json=payload)
 
     def update_post(self, post_id: int, payload: Dict[str, object]) -> Dict[str, object]:
         return self._request("POST", f"/posts/{post_id}", json=payload)
+
+    def create_or_update_post(self, payload: Dict[str, object]) -> Dict[str, object]:
+        post_id = payload.get("id")
+        if isinstance(post_id, int) and post_id > 0:
+            return self.update_post(post_id, payload)
+        return self.create_post(payload)
 
     def get_post(self, post_id: int) -> Dict[str, object]:
         return self._request("GET", f"/posts/{post_id}")
@@ -113,6 +146,18 @@ class WordPressRestClient:
             "menu_order": order,
         }
         return self._request("POST", f"/menus/{menu_id}/items", json=payload)
+
+    def _find_term(self, endpoint: str, name: str) -> Dict[str, object] | None:
+        params = {"search": name, "per_page": 100}
+        try:
+            results = self._request("GET", endpoint, params=params)
+        except requests.HTTPError:
+            return None
+        name_lower = name.lower()
+        for entry in results or []:
+            if isinstance(entry, dict) and entry.get("name", "").lower() == name_lower:
+                return entry
+        return None
 
 
 __all__ = ["WordPressRestClient"]

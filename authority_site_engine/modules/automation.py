@@ -14,6 +14,7 @@ from .health import SiteHealthMonitor
 from .internal_linking import InternalLinkingEngine
 from .storage_cleanup import StorageCleanup
 from ..core.cloudflare_client import CloudflareClient
+from ..core.deployment_manager import resolve_wordpress_connection
 from ..core.extensions import get_extension_manager
 from ..core.http_client import RequestsHttpClient
 from ..core.models import AutomationTaskConfig, ProjectData, default_sitemap_paths
@@ -66,13 +67,10 @@ class DailyAutomationScheduler:
         self.settings = project_data.automation
         timeout = max(5, project_data.health.http_timeout)
         self.http_client = http_client or RequestsHttpClient(timeout=timeout)
-        info = project_data.basic_info
-        self.wp_client = wp_client or WordPressRestClient(
-            info.wp_admin_url,
-            info.wp_username,
-            info.wp_password,
-            logger=self.logger,
-        )
+        if wp_client is None:
+            site_url, username, password = resolve_wordpress_connection(project_data)
+            wp_client = WordPressRestClient(site_url, username, password, logger=self.logger)
+        self.wp_client = wp_client
         if cloudflare_client is None and project_data.cloudflare.cloudflare_email:
             cf = project_data.cloudflare
             if cf.cloudflare_email and cf.cloudflare_api_key:

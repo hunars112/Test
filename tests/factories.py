@@ -138,6 +138,9 @@ def build_sample_project(tmp_path: Path) -> ProjectData:
             site_title="Portable Heat HQ",
             admin_email="user@example.com",
             timezone="UTC",
+            site_url="https://portableheat.example",
+            wp_rest_username="admin",
+            wp_app_password="app-password",
         ),
         health=HealthMonitoringSettings(
             enable_http_checks=True,
@@ -182,6 +185,13 @@ class FakeWordPressClient:
         self.categories.append(category)
         return category
 
+    def ensure_category(self, name: str, slug: str | None = None):
+        for category in self.categories:
+            if category["name"].lower() == name.lower():
+                return category["id"], False
+        created = self.create_category(name)
+        return created["id"], True
+
     # Tag helpers ------------------------------------------------------
     def list_tags(self):
         return list(self.tags)
@@ -191,6 +201,13 @@ class FakeWordPressClient:
         tag = {"id": self._tag_counter, "name": name}
         self.tags.append(tag)
         return tag
+
+    def ensure_tag(self, name: str):
+        for tag in self.tags:
+            if tag["name"].lower() == name.lower():
+                return tag["id"], False
+        created = self.create_tag(name)
+        return created["id"], True
 
     # Posts -------------------------------------------------------------
     def create_post(self, payload):
@@ -215,6 +232,12 @@ class FakeWordPressClient:
         }
         self.created_posts.append(record)
         return record
+
+    def create_or_update_post(self, payload):
+        post_id = payload.get("id")
+        if isinstance(post_id, int) and post_id in self.post_store:
+            return self.update_post(post_id, payload)
+        return self.create_post(payload)
 
     def update_post(self, post_id, payload):
         updated_content = payload.get("content")
@@ -296,6 +319,9 @@ class FakeWordPressClient:
         }
         self.menu_items.setdefault(menu_id, []).append(item)
         return item
+
+    def test_connection(self):
+        return {"name": "fake", "routes": []}
 
     def _enrich_content(self, text: str) -> str:
         words = text.split()

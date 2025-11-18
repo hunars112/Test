@@ -301,6 +301,9 @@ class DeploymentSettings:
     admin_email: str = ""
     timezone: str = "UTC"
     permalink_structure: str = "/%postname%/"
+    site_url: str = ""
+    wp_rest_username: str = ""
+    wp_app_password: str = ""
 
 
 @dataclass

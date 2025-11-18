@@ -15,6 +15,7 @@ from .category_menu import CategoryMenuBuilder
 from .internal_linking import InternalLinkingEngine
 from .schema import SchemaEngine
 from ..core.cloudflare_client import CloudflareClient
+from ..core.deployment_manager import resolve_wordpress_connection
 from ..core.models import ProjectData
 from ..core.wp_client import WordPressRestClient
 from .posting import WordPressPostingEngine
@@ -67,8 +68,10 @@ class DeploymentEngine:
         self.logs_dir.mkdir(parents=True, exist_ok=True)
         self.content_dir.mkdir(parents=True, exist_ok=True)
         self.logger = logger or self._configure_logger()
-        info = project_data.basic_info
-        self.client = client or WordPressRestClient(info.wp_admin_url, info.wp_username, info.wp_password, logger=self.logger)
+        if client is None:
+            site_url, username, password = resolve_wordpress_connection(project_data)
+            client = WordPressRestClient(site_url, username, password, logger=self.logger)
+        self.client = client
         self.cloudflare_client = cloudflare_client
         self.command_runner = command_runner or CommandRunner()
         self.posting_engine_cls = posting_engine_cls

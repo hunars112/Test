@@ -13,6 +13,7 @@ from ..core.app_config import (
     get_default_config_path,
     load_app_config,
 )
+from ..core.deployment_manager import DeploymentError, DeploymentManager
 from ..core.models import (
     AffiliateLinkSet,
     AffiliateOffer,
@@ -646,19 +647,27 @@ class ProjectConfigPanel(BasePanel):
         self.deployment_admin_email = tk.StringVar()
         self.timezone_var = tk.StringVar(value="UTC")
         self.permalink_var = tk.StringVar(value="/%postname%/")
+        self.site_url_var = tk.StringVar()
+        self.rest_username_var = tk.StringVar()
+        self.app_password_var = tk.StringVar()
         entries = [
-            ("Theme Slug", self.theme_slug_var),
-            ("Theme ZIP URL", self.theme_zip_var),
-            ("WP-CLI Path", self.wp_cli_var),
-            ("Site Title", self.site_title_var),
-            ("Admin Email", self.deployment_admin_email),
-            ("Timezone", self.timezone_var),
-            ("Permalink Structure", self.permalink_var),
+            ("Live Site URL", self.site_url_var, None),
+            ("WP REST Username", self.rest_username_var, None),
+            ("WP Application Password", self.app_password_var, "*"),
+            ("Theme Slug", self.theme_slug_var, None),
+            ("Theme ZIP URL", self.theme_zip_var, None),
+            ("WP-CLI Path", self.wp_cli_var, None),
+            ("Site Title", self.site_title_var, None),
+            ("Admin Email", self.deployment_admin_email, None),
+            ("Timezone", self.timezone_var, None),
+            ("Permalink Structure", self.permalink_var, None),
         ]
         start = len(checkbox_labels)
-        for offset, (label, var) in enumerate(entries):
+        for offset, (label, var, show) in enumerate(entries):
             ttk.Label(frame, text=label).grid(row=start + offset, column=0, sticky="w", padx=8, pady=4)
-            ttk.Entry(frame, textvariable=var).grid(row=start + offset, column=1, sticky="ew", padx=8, pady=4)
+            ttk.Entry(frame, textvariable=var, show=show).grid(
+                row=start + offset, column=1, sticky="ew", padx=8, pady=4
+            )
         self.plugin_slugs_text = tk.Text(frame, height=3)
         self.plugin_zip_text = tk.Text(frame, height=3)
         self.sitemap_paths_text = tk.Text(frame, height=3)
@@ -771,6 +780,9 @@ class ProjectConfigPanel(BasePanel):
         self.deployment_admin_email.set("")
         self.timezone_var.set("UTC")
         self.permalink_var.set("/%postname%/")
+        self.site_url_var.set("")
+        self.rest_username_var.set("")
+        self.app_password_var.set("")
         self.automation_enabled_var.set(False)
         for key, (enabled_var, interval_var) in self.automation_task_vars.items():
             default_enabled, default_interval = self.automation_defaults.get(key, (True, interval_var.get()))
@@ -864,6 +876,9 @@ class ProjectConfigPanel(BasePanel):
         self.deployment_admin_email.set(deployment.admin_email)
         self.timezone_var.set(deployment.timezone)
         self.permalink_var.set(deployment.permalink_structure)
+        self.site_url_var.set(deployment.site_url)
+        self.rest_username_var.set(deployment.wp_rest_username)
+        self.app_password_var.set(deployment.wp_app_password)
         self._set_text_widget(self.plugin_slugs_text, deployment.plugin_slugs)
         self._set_text_widget(self.plugin_zip_text, deployment.plugin_zip_urls)
         self._set_text_widget(self.sitemap_paths_text, deployment.sitemap_paths)
@@ -964,6 +979,9 @@ class ProjectConfigPanel(BasePanel):
             admin_email=self.deployment_admin_email.get().strip(),
             timezone=self.timezone_var.get().strip() or "UTC",
             permalink_structure=self.permalink_var.get().strip() or "/%postname%/",
+            site_url=self.site_url_var.get().strip(),
+            wp_rest_username=self.rest_username_var.get().strip(),
+            wp_app_password=self.app_password_var.get().strip(),
         )
         health = HealthMonitoringSettings(
             enable_http_checks=self.health_vars["enable_http_checks"].get(),
@@ -1096,6 +1114,14 @@ class TopicalBlueprintPanel(BasePanel):
 class PostingPanel(BasePanel):
     """Panel summarizing posting status and scheduling controls (Part 3)."""
 
+    ACTION_MAP = {
+        "Post Pillar Content": "pillar",
+        "Post Supporting Content": "supporting",
+        "Post Affiliate Reviews": "affiliate_review",
+        "Post Amazon Roundups": "amazon_roundup",
+        "Post Informational Content": "info",
+    }
+
     def __init__(self, master: tk.Widget, app: AuthoritySiteEngineApp) -> None:
         super().__init__(master, app)
         self.publish_mode = tk.StringVar(value="schedule")
@@ -1133,7 +1159,32 @@ class PostingPanel(BasePanel):
         self.post_stats.pack(fill="both", expand=True)
 
     def _trigger_posting(self, label: str) -> None:
-        self.app.set_status(f"Requested: {label}")
+        post_type = self.ACTION_MAP.get(label)
+        if not post_type:
+            return
+        context = self.get_project_context()
+        if not all(context):
+            return
+        project, root = context
+        try:
+            manager = DeploymentManager(project, root)
+            publish_now = self.publish_mode.get() == "publish"
+            report = manager.publish_posts_from_csv(
+                post_type,
+                publish_immediately=publish_now,
+            )
+        except DeploymentError as exc:
+            messagebox.showerror("Posting", str(exc))
+            return
+        except Exception as exc:  # pragma: no cover - UI guard
+            messagebox.showerror("Posting", str(exc))
+            return
+        summary = f"Created {report.created} {post_type} posts"
+        if report.errors:
+            summary += f" ({len(report.errors)} errors)"
+        messagebox.showinfo("Posting", summary)
+        self.app.set_status(summary)
+        self.on_show()
 
     def _sync_from_wordpress(self) -> None:
         context = self.get_project_context()
@@ -1260,7 +1311,7 @@ class CategoryMenuPanel(BasePanel):
         ttk.Button(buttons, text="Auto-generate Categories", command=self._auto_generate).pack(
             side="left", padx=4
         )
-        ttk.Button(buttons, text="Push Categories", command=lambda: self._notify("push")).pack(
+        ttk.Button(buttons, text="Push Categories", command=self._push_categories).pack(
             side="left", padx=4
         )
         ttk.Button(buttons, text="Build Main Menu", command=lambda: self._notify("menu")).pack(
@@ -1304,6 +1355,25 @@ class CategoryMenuPanel(BasePanel):
         if self.app.current_project_data:
             categories = self.app.current_project_data.categories.categories or ["(no categories configured)"]
             self.category_list.insert("1.0", "\n".join(categories))
+
+    def _push_categories(self) -> None:
+        context = self.get_project_context()
+        if not all(context):
+            return
+        project, root = context
+        try:
+            manager = DeploymentManager(project, root)
+            report = manager.push_categories()
+        except DeploymentError as exc:
+            messagebox.showerror("Push Categories", str(exc))
+            return
+        except Exception as exc:  # pragma: no cover - UI safeguard
+            messagebox.showerror("Push Categories", str(exc))
+            return
+        summary = f"Created {report.created} / reused {report.reused} categories"
+        messagebox.showinfo("Push Categories", summary)
+        self.app.set_status(summary)
+        self.on_show()
 
 
 class AffiliatePanel(BasePanel):
@@ -1441,6 +1511,30 @@ class DeploymentPanel(BasePanel):
 
     def __init__(self, master: tk.Widget, app: AuthoritySiteEngineApp) -> None:
         super().__init__(master, app)
+        connection = ttk.LabelFrame(self, text="WordPress Connection", padding=10)
+        connection.pack(fill="x", pady=4)
+        self.connection_vars = {
+            "site_url": tk.StringVar(),
+            "username": tk.StringVar(),
+            "password": tk.StringVar(),
+        }
+        fields = [
+            ("Site URL", "site_url", None),
+            ("WP Username", "username", None),
+            ("WP App Password", "password", "*"),
+        ]
+        for row, (label, key, show) in enumerate(fields):
+            ttk.Label(connection, text=label).grid(row=row, column=0, sticky="w", padx=6, pady=2)
+            ttk.Entry(
+                connection,
+                textvariable=self.connection_vars[key],
+                show=show,
+                state="readonly",
+            ).grid(row=row, column=1, sticky="ew", padx=6, pady=2)
+        ttk.Button(connection, text="Test Connection", command=self._test_connection).grid(
+            row=len(fields), column=0, columnspan=2, sticky="w", padx=6, pady=4
+        )
+        connection.columnconfigure(1, weight=1)
         buttons = ttk.Frame(self)
         buttons.pack(fill="x")
         for label in [
@@ -1457,6 +1551,7 @@ class DeploymentPanel(BasePanel):
         self.status_text.pack(fill="both", expand=True, pady=6)
 
     def on_show(self) -> None:
+        self._refresh_connection_info()
         self.status_text.delete("1.0", "end")
         root = self.app.get_project_root()
         if not root:
@@ -1466,6 +1561,38 @@ class DeploymentPanel(BasePanel):
             self.status_text.insert("1.0", status_path.read_text(encoding="utf-8"))
         else:
             self.status_text.insert("1.0", "No deployment run recorded.\n")
+
+    def _refresh_connection_info(self) -> None:
+        data = self.app.current_project_data
+        if not data:
+            for var in self.connection_vars.values():
+                var.set("")
+            return
+        deployment = data.deployment
+        defaults = {
+            "site_url": deployment.site_url or data.basic_info.wp_admin_url,
+            "username": deployment.wp_rest_username or data.basic_info.wp_username,
+            "password": deployment.wp_app_password or data.basic_info.wp_password,
+        }
+        for key, value in defaults.items():
+            self.connection_vars[key].set(value or "")
+
+    def _test_connection(self) -> None:
+        context = self.get_project_context()
+        if not all(context):
+            return
+        project, root = context
+        try:
+            manager = DeploymentManager(project, root)
+            manager.test_connection()
+        except DeploymentError as exc:
+            messagebox.showerror("WordPress Connection", str(exc))
+            return
+        except Exception as exc:  # pragma: no cover - UI guard
+            messagebox.showerror("WordPress Connection", str(exc))
+            return
+        messagebox.showinfo("WordPress Connection", "Connection successful.")
+        self.app.set_status("WordPress connection verified")
 
 
 class HealthPanel(BasePanel):
