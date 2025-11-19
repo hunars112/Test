@@ -1375,7 +1375,12 @@ class CategoryMenuPanel(BasePanel):
         except Exception as exc:  # pragma: no cover - UI safeguard
             messagebox.showerror("Push Categories", str(exc))
             return
-        summary = f"Created {report.created} / reused {report.reused} categories"
+        job_name = ""
+        if report.details and report.details.get("job_path"):
+            job_name = Path(str(report.details["job_path"])).name
+        summary = f"Queued {report.total_rows} categories via ASE Connector"
+        if job_name:
+            summary += f" ({job_name})"
         messagebox.showinfo("Push Categories", summary)
         self.app.set_status(summary)
         self.on_show()

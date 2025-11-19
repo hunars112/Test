@@ -3,10 +3,14 @@ from __future__ import annotations
 
 import csv
 import logging
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List
+from urllib.parse import urlparse
+
+from ase_connector_client import ASEJobClient, JobUploadError, SiteConfig
 
 from .models import ProjectData
 from .wp_client import WordPressRestClient, WordPressRestError
@@ -98,6 +102,7 @@ class DeploymentReport:
     skipped: int = 0
     total_rows: int = 0
     errors: List[str] | None = None
+    details: Dict[str, object] | None = None
 
 
 class DeploymentManager:
@@ -145,6 +150,83 @@ class DeploymentManager:
             logger=self.logger,
         )
 
+    def _build_site_config(self) -> SiteConfig:
+        cf = self.project.cloudflare
+        host_field = (cf.ssh_host or "").strip()
+        host, port = self._parse_host_port(host_field) if host_field else (self._host_from_project(), 22)
+        username = cf.ssh_username.strip()
+        password = cf.ssh_password.strip()
+        if not host or not username or not password:
+            raise DeploymentError(
+                "SSH host, username, or password is missing. Update the Cloudflare & Host tab first."
+            )
+        web_root = self._determine_web_root()
+        wp_content = self._determine_wp_content(web_root)
+        return SiteConfig(
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            web_root=web_root,
+            wp_content=wp_content,
+        )
+
+    def _parse_host_port(self, value: str) -> tuple[str, int]:
+        cleaned = value.strip()
+        for prefix in ("sftp://", "ssh://", "ftp://"):
+            if cleaned.lower().startswith(prefix):
+                cleaned = cleaned[len(prefix) :]
+                break
+        if ":" in cleaned:
+            candidate_host, maybe_port = cleaned.rsplit(":", 1)
+            if maybe_port.isdigit():
+                return candidate_host, int(maybe_port)
+        return cleaned, 22
+
+    def _host_from_project(self) -> str:
+        for candidate in (
+            self.project.deployment.site_url,
+            self.project.basic_info.wp_admin_url,
+            self.project.basic_info.domain_name,
+        ):
+            host = self._extract_host(candidate)
+            if host:
+                return host
+        return ""
+
+    def _extract_host(self, url_or_domain: str) -> str:
+        if not url_or_domain:
+            return ""
+        parsed = urlparse(url_or_domain)
+        if parsed.scheme:
+            return parsed.netloc
+        return url_or_domain.split("/", 1)[0]
+
+    def _determine_web_root(self) -> str:
+        hint = (self.project.deployment.wp_cli_path or "").strip()
+        if not hint or hint.lower() == "wp":
+            return ""
+        if "/" not in hint and "\\" not in hint:
+            return ""
+        if hint.endswith("/wp") or hint.endswith("\\wp"):
+            hint = hint[:-3]
+        return hint.rstrip("/\\")
+
+    def _determine_wp_content(self, web_root: str) -> str:
+        if web_root:
+            return os.path.join(web_root, "wp-content").replace("\\", "/")
+        subdir = self._site_subdir()
+        if subdir:
+            return f"{subdir}/wp-content"
+        return "wp-content"
+
+    def _site_subdir(self) -> str:
+        url = self.project.deployment.site_url or self.project.basic_info.wp_admin_url or ""
+        if not url:
+            return ""
+        parsed = urlparse(url)
+        return parsed.path.strip("/")
+
     # ------------------------------------------------------------------
     def test_connection(self) -> Dict[str, object]:
         """Verify that WordPress credentials are valid."""
@@ -163,20 +245,36 @@ class DeploymentManager:
             categories = [cat.strip() for cat in self.project.categories.suggestions if cat.strip()]
         if not categories:
             raise DeploymentError("No categories configured for this project.")
-        created = reused = 0
-        for name in categories:
-            try:
-                cat_id, was_created = self.client.ensure_category(name)
-            except WordPressRestError as exc:
-                message = f"Failed to create category '{name}': {exc}"
-                self.logger.error(message)
-                raise DeploymentError(message) from exc
-            self.logger.info("Category %s -> %s", name, cat_id)
-            if was_created:
-                created += 1
-            else:
-                reused += 1
-        return DeploymentReport(created=created, reused=reused, total_rows=len(categories))
+
+        payload = [
+            {
+                "name": name,
+                "slug": self._slugify(name),
+                "parent": 0,
+            }
+            for name in categories
+        ]
+
+        site_config = self._build_site_config()
+        client = ASEJobClient(site_config)
+        try:
+            job_path = client.queue_category_job(payload)
+        except JobUploadError as exc:
+            message = f"Failed to queue category job: {exc}"
+            self.logger.error(message)
+            raise DeploymentError(message) from exc
+        except Exception as exc:  # noqa: BLE001
+            message = f"Unexpected ASE Connector error: {exc}"
+            self.logger.error(message)
+            raise DeploymentError(message) from exc
+
+        self.logger.info("Queued category job via ASE Connector at %s", job_path)
+        return DeploymentReport(
+            created=0,
+            reused=0,
+            total_rows=len(payload),
+            details={"job_path": job_path},
+        )
 
     # ------------------------------------------------------------------
     def publish_posts_from_csv(
@@ -264,6 +362,10 @@ class DeploymentManager:
                 cache[key] = term_id
             ids.append(cache[key])
         return ids
+
+    def _slugify(self, name: str) -> str:
+        slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
+        return slug or "category"
 
     def _normalize_type(self, csv_type: str) -> str:
         key = csv_type.strip().lower()

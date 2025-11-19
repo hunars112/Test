@@ -1,4 +1,6 @@
 """Tests for the lightweight WordPress deployment manager."""
+from unittest.mock import patch
+
 from authority_site_engine.core.deployment_manager import (
     DeploymentError,
     DeploymentManager,
@@ -7,15 +9,25 @@ from authority_site_engine.core.deployment_manager import (
 from tests.factories import FakeWordPressClient, prepare_project
 
 
-def test_push_categories_creates_terms(tmp_path) -> None:
+def test_push_categories_creates_job(tmp_path) -> None:
     project_data, project_root = prepare_project(tmp_path)
-    client = FakeWordPressClient()
-    manager = DeploymentManager(project_data, project_root, client=client)
+    project_data.categories.categories = ["One", "Two"]
+    project_data.cloudflare.ssh_host = "deploy.example.com"
+    project_data.cloudflare.ssh_username = "user"
+    project_data.cloudflare.ssh_password = "pass"
+    manager = DeploymentManager(project_data, project_root, client=FakeWordPressClient())
 
-    report = manager.push_categories()
+    with patch("authority_site_engine.core.deployment_manager.ASEJobClient") as job_client:
+        instance = job_client.return_value
+        instance.queue_category_job.return_value = (
+            "/home/user/wp-content/ase-jobs/example.json"
+        )
 
-    assert report.created >= 1
-    assert len(client.categories) >= report.created
+        report = manager.push_categories()
+
+        instance.queue_category_job.assert_called_once()
+        assert report.total_rows == 2
+        assert report.details and "job_path" in report.details
 
 
 def test_publish_posts_from_csv(tmp_path) -> None:
