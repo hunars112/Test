@@ -1,0 +1,94 @@
+{
+  "sites": [
+    {
+      "domain": "glucoregulates.com",
+      "niche": "blood glucose and metabolic health supplements",
+      "description": "Science-informed blood glucose and metabolic wellness supplements.",
+      "keywords": ["blood sugar support", "metabolic health", "glucose balance"],
+      "anchors": ["glucose support guide", "metabolic health tips", "blood sugar routine"],
+      "localAddress": "1287 Willow Creek Dr, Austin, TX 78702",
+      "phoneNumber": "+1-512-555-0141",
+      "foundedYear": 2020,
+      "ownerName": "Metabolic Wellness Labs"
+    },
+    {
+      "domain": "plantarxcbd.net",
+      "niche": "CBD for plantar fasciitis and foot pain",
+      "description": "Educational CBD content for foot discomfort and recovery.",
+      "keywords": ["plantar fasciitis relief", "CBD foot pain", "heel discomfort"],
+      "anchors": ["foot comfort strategies", "plantar recovery routine", "CBD foot care"],
+      "localAddress": "4529 Harbor Point Ave, Tampa, FL 33602",
+      "phoneNumber": "+1-813-555-0192",
+      "foundedYear": 2021,
+      "ownerName": "Foot Relief Botanicals"
+    },
+    {
+      "domain": "freshiaairpurifier.net",
+      "niche": "HEPA air purifiers and indoor air quality",
+      "description": "Practical indoor air quality and HEPA purifier recommendations.",
+      "keywords": ["HEPA filter guide", "indoor air quality", "air purifier maintenance"],
+      "anchors": ["air quality checklist", "HEPA buyer guide", "clean air tips"],
+      "localAddress": "7748 Pine Summit Rd, Denver, CO 80205",
+      "phoneNumber": "+1-303-555-0116",
+      "foundedYear": 2019,
+      "ownerName": "Fresh Indoor Air Co"
+    },
+    {
+      "domain": "ultraaircooler.net",
+      "niche": "portable evaporative air coolers",
+      "description": "Advice and comparisons for portable evaporative air coolers.",
+      "keywords": ["evaporative cooler", "portable cooling", "summer cooling tips"],
+      "anchors": ["portable cooling guide", "evaporative cooling setup", "summer comfort advice"],
+      "localAddress": "3102 Mesa Ridge Blvd, Phoenix, AZ 85008",
+      "phoneNumber": "+1-602-555-0168",
+      "foundedYear": 2018,
+      "ownerName": "Ultra Climate Home"
+    },
+    {
+      "domain": "dormivapillows.com",
+      "niche": "memory foam pillows and sleep quality",
+      "description": "Sleep optimization and pillow ergonomics resources.",
+      "keywords": ["memory foam pillow", "sleep posture", "better sleep quality"],
+      "anchors": ["sleep quality guide", "pillow support tips", "better sleep routine"],
+      "localAddress": "965 Lakeview Terrace, Charlotte, NC 28203",
+      "phoneNumber": "+1-704-555-0174",
+      "foundedYear": 2022,
+      "ownerName": "Dormiva Sleep Studio"
+    },
+    {
+      "domain": "radiantcbdgummies.net",
+      "niche": "CBD gummies and stress relief",
+      "description": "Stress support content and CBD gummy education.",
+      "keywords": ["CBD gummies", "stress support", "daily calm routine"],
+      "anchors": ["stress relief guide", "CBD calm tips", "wellness routine ideas"],
+      "localAddress": "2457 Maple Brook Ln, Nashville, TN 37206",
+      "phoneNumber": "+1-615-555-0138",
+      "foundedYear": 2021,
+      "ownerName": "Radiant Hemp Wellness"
+    },
+    {
+      "domain": "purelifecbdgummies.net",
+      "niche": "CBD gummies and hemp wellness",
+      "description": "Hemp wellness and CBD gummy educational hub.",
+      "keywords": ["hemp wellness", "CBD routine", "daily wellness support"],
+      "anchors": ["hemp wellness guide", "CBD lifestyle tips", "wellness support plan"],
+      "localAddress": "5109 Riverbend Pkwy, Portland, OR 97214",
+      "phoneNumber": "+1-503-555-0127",
+      "foundedYear": 2020,
+      "ownerName": "PureLife Hemp Collective"
+    },
+    {
+      "domain": "dermafixnail.com",
+      "niche": "nail fungus treatment and nail health",
+      "description": "Nail health guidance and fungal care education.",
+      "keywords": ["nail fungus care", "nail health routine", "healthy nails"],
+      "anchors": ["nail care guide", "healthy nails routine", "fungal nail support"],
+      "localAddress": "889 Cedar Grove St, Columbus, OH 43215",
+      "phoneNumber": "+1-614-555-0183",
+      "foundedYear": 2019,
+      "ownerName": "DermaFix Care Group"
+    }
+  ],
+  "concurrency": 2,
+  "delayMs": 2000
+}
