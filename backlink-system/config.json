@@ -1,0 +1,52 @@
+{
+  "sites": [
+    {
+      "domain": "example-health.com",
+      "niche": "health",
+      "title": "Evidence-Based Wellness Tips",
+      "description": "Explore practical wellness habits, nutrition insights, and supplement guidance designed for consistent energy and long-term health outcomes."
+    },
+    {
+      "domain": "pure-supplements.net",
+      "niche": "supplements",
+      "title": "Supplement Transparency Guide",
+      "description": "Learn how to compare ingredient labels, dosing strategies, and quality markers so you can choose supplements with confidence."
+    },
+    {
+      "domain": "aircare-lab.org",
+      "niche": "air purifiers",
+      "title": "Cleaner Indoor Air Resource",
+      "description": "Find practical recommendations on HEPA filtration, placement strategy, and maintenance to improve indoor air quality."
+    },
+    {
+      "domain": "sleep-reset.io",
+      "niche": "sleep",
+      "title": "Sleep Optimization Blueprint",
+      "description": "Use actionable routines for sleep hygiene, bedroom setup, and habit design to improve nightly recovery and daytime focus."
+    },
+    {
+      "domain": "homebuild-smarter.com",
+      "niche": "home improvement",
+      "title": "Smarter Home Improvement",
+      "description": "Get renovation planning ideas, material comparisons, and project checklists for efficient and durable home upgrades."
+    },
+    {
+      "domain": "mobility-strength.co",
+      "niche": "fitness",
+      "title": "Mobility and Strength Hub",
+      "description": "Discover progressive routines for joint-friendly strength, mobility drills, and recovery practices for active lifestyles."
+    },
+    {
+      "domain": "mindful-living.today",
+      "niche": "mental wellness",
+      "title": "Mindful Living Strategies",
+      "description": "Read practical mental wellness guidance on stress reduction, focus routines, and sustainable lifestyle improvements."
+    },
+    {
+      "domain": "cleanhome-methods.com",
+      "niche": "home maintenance",
+      "title": "Clean Home Methods",
+      "description": "Access cleaning systems, maintenance schedules, and product guidance to keep homes healthier and easier to manage."
+    }
+  ]
+}
