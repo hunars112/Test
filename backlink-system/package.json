@@ -1,0 +1,21 @@
+{
+  "name": "backlink-automation-system",
+  "version": "1.0.0",
+  "description": "Node.js ES module backlink content and submission workflow",
+  "type": "module",
+  "main": "run.js",
+  "scripts": {
+    "start": "node run.js",
+    "test": "node --test tests/*.test.js",
+    "offline": "node run-offline.js"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "dotenv": "^16.4.5",
+    "inquirer": "^9.2.22",
+    "openai": "^4.57.0",
+    "ora": "^8.1.0",
+    "p-limit": "^6.1.0",
+    "pdf-lib": "^1.17.1"
+  }
+}
